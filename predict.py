@@ -1,7 +1,7 @@
 # Prediction interface for Cog ⚙️
 # https://cog.run/python
 
-from cog import BasePredictor, Input, ConcatenateIterator
+from cog import BasePredictor, Input
 import os
 import time
 import torch
@@ -41,13 +41,11 @@ class Predictor(BasePredictor):
         image: Path = Input(description="Input image"),
         prompt: str = Input(description="Input prompt", default="What are these?"),
         max_new_tokens: int = Input(description="Max new tokens", default=200, ge=8, le=4096)
-    ) -> ConcatenateIterator[str]:
+    ) -> str:
         """Run a single prediction on the model"""
         img = Image.open(image).convert("RGB")
         prompt_format = f"<|user|>\n<image>\n{prompt}<|end|>\n<|assistant|>\n"
         inputs = self.processor(prompt_format, img, return_tensors='pt').to('cuda')
         output = self.model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
-        result = []
-        for token in output[0][2:]:
-            result.append(self.processor.decode(token, skip_special_tokens=True))
-            yield " " + result[-1]
+        result = self.processor.decode(output[0][2:], skip_special_tokens=True)
+        return result
